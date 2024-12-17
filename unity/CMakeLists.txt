@@ -26,7 +26,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_HOME_DIRECTORY}/build")
 
 # OS detection
 if (WIN32)
-    set(IPL_OS_WINDOWS TRUE)
+    if (CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+        # UWP detection
+        set(IPL_OS_UWP TRUE)
+    else()
+        set(IPL_OS_WINDOWS TRUE)
+    endif()
 elseif (UNIX AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(IPL_OS_LINUX TRUE)
 elseif (APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -63,6 +68,14 @@ elseif (IPL_OS_IOS)
     set(IPL_CPU_ARMV8 TRUE)
 elseif (IPL_OS_WASM)
     set(IPL_CPU_ARMV7 TRUE)
+elseif (IPL_OS_UWP)
+    if (CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+        set(IPL_CPU_ARMV8 TRUE)
+    elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(IPL_CPU_X64 TRUE)
+    else()
+        set(IPL_CPU_X86 TRUE)
+    endif()
 endif()
 
 
@@ -87,7 +100,7 @@ mark_as_advanced(Sphinx_EXECUTABLE_DIR Unity_EXECUTABLE_DIR)
 #
 
 # Flags determined by system introspection
-if (IPL_OS_WINDOWS)
+if (IPL_OS_WINDOWS OR IPL_OS_UWP)
     add_definitions(-DIPL_OS_WINDOWS)
 endif()
 if (IPL_OS_LINUX)
@@ -182,6 +195,38 @@ if (IPL_OS_WASM)
     add_link_options(-sALLOW_MEMORY_GROWTH=1 -sSINGLE_FILE=1)
 endif()
 
+# Compiler flags for UWP
+if (IPL_OS_UWP)
+    # UWP flags for compatibility with UWP and Xbox.
+    add_compile_definitions(
+        WIN32
+        WINDOWS
+        UNICODE
+        _UNICODE
+        _CRT_SECURE_NO_WARNINGS
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+        _DISABLE_EXTENDED_ALIGNED_STORAGE
+        $<IF:$<CONFIG:Debug>,_DEBUG,NDEBUG>
+    )
+    add_compile_options(
+        /EHsc /MP /W3 /Zi
+        # Force dynamic runtime for UWP
+        $<IF:$<CONFIG:Debug>,/MDd,/MD>
+        $<$<CONFIG:Debug>:/RTC1>
+        $<$<NOT:$<CONFIG:Debug>>:/Ox>
+        $<$<CONFIG:Release>:/GL>
+    )
+    add_link_options(
+        /DEBUG
+        $<$<CONFIG:Release>:/OPT:REF>
+        $<$<CONFIG:Release>:/OPT:ICF>
+        $<$<CONFIG:Release>:/LTCG>
+        $<$<CONFIG:Release>:/MANIFEST:NO>
+        $<IF:$<CONFIG:Release>,/INCREMENTAL:NO,/INCREMENTAL>
+        $<$<CONFIG:Debug>:/NODEFAULTLIB:LIBCMT>
+    )
+endif()
 
 #
 # DEPENDENCIES

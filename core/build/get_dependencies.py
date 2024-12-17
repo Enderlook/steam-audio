@@ -564,6 +564,47 @@ def configure_cmake(name, cmake_layers, platform, cmake, vs_version, ndk_path, e
         cmake_args += ['-G', 'Unix Makefiles']
         cmake_args += ['-DCMAKE_TOOLCHAIN_FILE=' + os.path.join(emsdk_path, 'upstream', 'emscripten', 'cmake', 'Modules', 'Platform', 'Emscripten.cmake')]
         cmake_args += ['-DCMAKE_BUILD_TYPE=' + ('Debug' if debug else 'Release')]
+    elif platform in ['uwp-x64', 'uwp-x86', 'uwp-arm64']:
+        arch = platform.split('-')[1]
+
+        # UWP Configuration for Xbox
+        cmake_args += ['-G', vs_generator_name(vs_version)]
+
+        if arch == 'x86':
+            cmake_args += ['-A', 'Win32']
+        elif arch == 'x64':
+            cmake_args += ['-A', 'x64']
+        if arch == 'arm64':
+            cmake_args += ['-A', 'ARM64']
+
+        # Set the system name to WindowsStore for UWP
+        cmake_args += ['-DCMAKE_SYSTEM_NAME=WindowsStore']
+        cmake_args += ['-DCMAKE_SYSTEM_VERSION=10.0']
+        cmake_args += ['-DCMAKE_GENERATOR_PLATFORM=' + arch]
+
+        # CRT settings (shared vs static)
+        if not shared_crt:
+            cmake_args += ['-DCMAKE_C_FLAGS_RELEASE=/MT', '-DCMAKE_CXX_FLAGS_RELEASE=/MT']
+            cmake_args += ['-DCMAKE_C_FLAGS_DEBUG=/MTd', '-DCMAKE_CXX_FLAGS_DEBUG=/MTd']
+        else:
+            cmake_args += ['-DCMAKE_C_FLAGS_RELEASE=/MD', '-DCMAKE_CXX_FLAGS_RELEASE=/MD']
+            cmake_args += ['-DCMAKE_C_FLAGS_DEBUG=/MDd', '-DCMAKE_CXX_FLAGS_DEBUG=/MDd']
+
+        # UWP-specific flags
+        cmake_args += ['-DCMAKE_UWP_PROJECT=TRUE']
+        cmake_args += ['-DCMAKE_UWP_ARCHITECTURE=' + arch]  # Ensure architecture is passed (x64, x86, ARM64)
+        cmake_args += ['-DCMAKE_UWP_COMPATIBILITY_LEVEL=10.0.10240.0']  # Compatibility level, adjust based on Xbox SDK
+
+        # Set debug/release mode
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + ('Debug' if debug else 'Release')]
+
+        # Ensure position-independent code
+        cmake_args += ['-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE']
+
+        # Disable security measures which prevent compilation
+        cmake_args += ['-DCMAKE_C_FLAGS=-D_CRT_SECURE_NO_WARNINGS']
+        cmake_args += ['-DCMAKE_CXX_FLAGS=-D_CRT_SECURE_NO_WARNINGS']
+
 
     stamp = []
 
@@ -641,7 +682,7 @@ def build_cmake(name, cmake_options, platform, cmake, debug):
 
     cmake_args = ['--build', build_dir]
 
-    if platform.startswith('windows-') or platform in ['osx', 'ios']:
+    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp'):
         cmake_args += ['--config', 'Debug' if debug else 'Release']
 
     if target is not None:
@@ -690,7 +731,7 @@ def install_dependency(name, dep, platform, cmake, debug):
 
     cmake_args = ['--install', build_dir]
 
-    if platform.startswith('windows-') or platform in ['osx', 'ios']:
+    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp'):
         cmake_args += ['--config', 'Debug' if debug else 'Release']
 
     run_command([cmake] + cmake_args)
@@ -799,7 +840,7 @@ print('Host platform:', host_platform)
 # --- Command-line parameters
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm'], type = str.lower, default = host_os)
+parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm', 'uwp'], type = str.lower, default = host_os)
 parser.add_argument('-a', '--architecture', help = "CPU architecture.", choices = ['x86', 'x64', 'armv7', 'arm64'], type = str.lower, default = 'x64')
 parser.add_argument('-t', '--toolchain', help = "Compiler toolchain. (Windows only)", choices = ['vs2013', 'vs2015', 'vs2017', 'vs2019', 'vs2022'], type = str.lower, default = 'vs2019')
 parser.add_argument('--ndk', help = "Path to the Android NDK. (Android only)", default = os.getenv('ANDROID_NDK'))

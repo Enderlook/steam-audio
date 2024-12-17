@@ -37,7 +37,7 @@ set(SRC_UNITYNATIVE
     mix_return_effect.cpp
 )
 
-if (IPL_OS_WINDOWS)
+if (IPL_OS_WINDOWS OR IPL_OS_UWP)
     list(APPEND SRC_UNITYNATIVE audioplugin_phonon.rc.in ${CMAKE_CURRENT_BINARY_DIR}/audioplugin_phonon.rc)
 endif()
 
@@ -107,6 +107,12 @@ elseif (IPL_OS_IOS)
     set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/iOS/)
 elseif (IPL_OS_WASM)
     set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/HTML5/)
+elseif (IPL_OS_UWP)
+    if (IPL_CPU_X86)
+        set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/UWP/x86/)
+    elseif (IPL_CPU_X64)
+        set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/UWP/x86_64/)
+    endif()
 endif()
 
 if (IPL_OS_MACOS)
@@ -139,7 +145,7 @@ install(
     RUNTIME DESTINATION lib/${IPL_BIN_SUBDIR}
 )
 
-if (IPL_OS_WINDOWS)
+if (IPL_OS_WINDOWS OR IPL_OS_UWP)
     install(
         FILES       ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/audioplugin_phonon.pdb
         DESTINATION symbols/${IPL_BIN_SUBDIR}
