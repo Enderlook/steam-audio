@@ -33,7 +33,7 @@ def detect_host_system():
 # Parses the command line.
 def parse_command_line(host_system):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm', 'uwp'], type = str.lower, default = host_system)
+    parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm', 'uwp', 'scarlet'], type = str.lower, default = host_system)
     parser.add_argument('-t', '--toolchain', help = "Compiler toolchain. (Windows only)", choices = ['vs2013', 'vs2015', 'vs2017', 'vs2019', 'vs2022'], type = str.lower, default = 'vs2019')
     parser.add_argument('-a', '--architecture', help = "CPU architecture.", choices = ['x86', 'x64', 'armv7', 'arm64'], type = str.lower, default = 'x64')
     parser.add_argument('-c', '--configuration', help = "Build configuration.", choices = ['debug', 'release'], type = str.lower, default = 'release')
@@ -43,20 +43,18 @@ def parse_command_line(host_system):
 
 # Returns the subdirectory in which to create build files.
 def build_subdir(args):
-    if args.platform == 'windows':
+    if args.platform in ['windows', 'scarlet']:
         return "-".join([args.platform, args.toolchain, args.architecture])
     elif args.platform in ['osx', 'ios']:
         return args.platform
-    elif args.platform in ['linux', 'android']:
+    elif args.platform in ['linux', 'android', 'uwp']:
         return "-".join([args.platform, args.architecture, args.configuration])
     elif args.platform in ['wasm']:
         return "-".join([args.platform, args.configuration])
-    elif args.platform == 'uwp':
-        return "-".join([args.platform, args.architecture, args.configuration])
 
 # Returns the subdirectory in which to create output files.
 def bin_subdir(args):
-    if args.platform in ['windows', 'linux', 'android', 'uwp']:
+    if args.platform in ['windows', 'linux', 'android', 'uwp', 'scarlet']:
         return "-".join([args.platform, args.architecture])
     elif args.platform in ['osx', 'ios', 'wasm']:
         return "-".join([args.platform])
@@ -67,7 +65,7 @@ def root_dir():
 
 # Returns the generator name to pass to CMake, based on the platform.
 def generator_name(args):
-    if args.platform in ['windows', 'uwp']:
+    if args.platform in ['windows', 'uwp', 'scarlet']:
         suffix = ''
         if args.architecture == 'x64' and args.toolchain in ['vs2013', 'vs2015', 'vs2017']:
             suffix = ' Win64'
@@ -202,6 +200,18 @@ def cmake_generate(args):
         cmake_args += ['-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=/MD']  # Ensure relwithdebinfo builds also use /MD
         cmake_args += ['-DCMAKE_CXX_FLAGS_MINSIZEREL=/MD']  # For MinSizeRel builds
         cmake_args += ['-DMSVC_RUNTIME_LIBRARY=/MD']
+
+    elif args.platform == 'scarlet':
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + config_name(args)]
+
+        if args.architecture == 'x86':
+            cmake_args += ['-A', 'Win32']
+        elif args.architecture == 'x64':
+            cmake_args += ['-A', 'x64']
+        elif args.architecture == 'arm64':
+            cmake_args += ['-A', 'ARM64']
+
+        cmake_args += ['-DUNITY_GAMECORE_SCARLET=TRUE']
 
     cmake_args += ['../..']
 

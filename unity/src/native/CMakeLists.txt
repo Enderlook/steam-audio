@@ -37,7 +37,7 @@ set(SRC_UNITYNATIVE
     mix_return_effect.cpp
 )
 
-if (IPL_OS_WINDOWS OR IPL_OS_UWP)
+if (IPL_OS_WINDOWS OR IPL_OS_UWP OR IPL_OS_SCARLET)
     list(APPEND SRC_UNITYNATIVE audioplugin_phonon.rc.in ${CMAKE_CURRENT_BINARY_DIR}/audioplugin_phonon.rc)
 endif()
 
@@ -112,6 +112,12 @@ elseif (IPL_OS_UWP)
         set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/UWP/x86/)
     elseif (IPL_CPU_X64)
         set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/UWP/x86_64/)
+    endif()
+elseif (IPL_OS_SCARLET)
+    if (IPL_CPU_X86)
+        set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/Scarlet/x86/)
+    elseif (IPL_CPU_X64)
+        set(PLUGIN_DIR ${CMAKE_HOME_DIRECTORY}/src/project/SteamAudioUnity/Assets/Plugins/SteamAudio/Binaries/Scarlet/x86_64/)
     endif()
 endif()
 

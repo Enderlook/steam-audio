@@ -604,7 +604,32 @@ def configure_cmake(name, cmake_layers, platform, cmake, vs_version, ndk_path, e
         # Disable security measures which prevent compilation
         cmake_args += ['-DCMAKE_C_FLAGS=-D_CRT_SECURE_NO_WARNINGS']
         cmake_args += ['-DCMAKE_CXX_FLAGS=-D_CRT_SECURE_NO_WARNINGS']
+    elif platform in ['scarlet-x64', 'scarlet-x86', 'scarlet-arm64']:
+        arch = platform.split('-')[1]
 
+        cmake_args += ['-G', vs_generator_name(vs_version)]
+
+        if arch == 'x86':
+            cmake_args += ['-A', 'Win32']
+        elif arch == 'x64':
+            cmake_args += ['-A', 'x64']
+        if arch == 'arm64':
+            cmake_args += ['-A', 'ARM64']
+
+        if not shared_crt:
+            cmake_args += ['-DCMAKE_C_FLAGS_RELEASE=/MT', '-DCMAKE_CXX_FLAGS_RELEASE=/MT']
+            cmake_args += ['-DCMAKE_C_FLAGS_DEBUG=/MTd', '-DCMAKE_CXX_FLAGS_DEBUG=/MTd']
+        else:
+            cmake_args += ['-DCMAKE_C_FLAGS_RELEASE=/MD', '-DCMAKE_CXX_FLAGS_RELEASE=/MD']
+            cmake_args += ['-DCMAKE_C_FLAGS_DEBUG=/MDd', '-DCMAKE_CXX_FLAGS_DEBUG=/MDd']
+
+        cmake_args += ['-DUNITY_GAMECORE_SCARLET=TRUE']
+
+        # Set debug/release mode
+        cmake_args += ['-DCMAKE_BUILD_TYPE=' + ('Debug' if debug else 'Release')]
+
+        # Ensure position-independent code
+        cmake_args += ['-DCMAKE_POSITION_INDEPENDENT_CODE=TRUE']
 
     stamp = []
 
@@ -682,7 +707,7 @@ def build_cmake(name, cmake_options, platform, cmake, debug):
 
     cmake_args = ['--build', build_dir]
 
-    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp'):
+    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp') or platform.startswith('scarlet'):
         cmake_args += ['--config', 'Debug' if debug else 'Release']
 
     if target is not None:
@@ -731,7 +756,7 @@ def install_dependency(name, dep, platform, cmake, debug):
 
     cmake_args = ['--install', build_dir]
 
-    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp'):
+    if platform.startswith('windows-') or platform in ['osx', 'ios'] or platform.startswith('uwp') or platform.startswith('scarlet'):
         cmake_args += ['--config', 'Debug' if debug else 'Release']
 
     run_command([cmake] + cmake_args)
@@ -840,7 +865,7 @@ print('Host platform:', host_platform)
 # --- Command-line parameters
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm', 'uwp'], type = str.lower, default = host_os)
+parser.add_argument('-p', '--platform', help = "Target operating system.", choices = ['windows', 'osx', 'linux', 'android', 'ios', 'wasm', 'uwp', 'scarlet'], type = str.lower, default = host_os)
 parser.add_argument('-a', '--architecture', help = "CPU architecture.", choices = ['x86', 'x64', 'armv7', 'arm64'], type = str.lower, default = 'x64')
 parser.add_argument('-t', '--toolchain', help = "Compiler toolchain. (Windows only)", choices = ['vs2013', 'vs2015', 'vs2017', 'vs2019', 'vs2022'], type = str.lower, default = 'vs2019')
 parser.add_argument('--ndk', help = "Path to the Android NDK. (Android only)", default = os.getenv('ANDROID_NDK'))
